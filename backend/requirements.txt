@@ -1,0 +1,41 @@
+# ComChatX Backend Dependencies
+# Python 3.10+
+
+# Web Framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# Multi-Agent Framework (最新稳定版本)
+pyautogen==0.9
+
+# AI/LLM Integrations
+openai==1.59.6
+httpx==0.28.1
+aiohttp==3.11.11
+
+# Database
+sqlalchemy==2.0.36
+alembic==1.14.0
+aiosqlite==0.20.0
+
+# Utilities
+python-dotenv==1.0.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dateutil==2.9.0
+
+# Async Support
+# asyncio 是 Python 3.4+ 的标准库,无需安装
+aiocache==0.12.3
+
+# Logging and Monitoring
+loguru==0.7.3
+
+# Testing (optional)
+pytest==8.3.4
+pytest-asyncio==0.25.2
+httpx==0.28.1
+

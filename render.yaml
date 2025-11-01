@@ -1,0 +1,38 @@
+services:
+  # Backend Service
+  - type: web
+    name: comchatx-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: MINIMAX_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: comchatx-db
+          property: connectionString
+
+  # Frontend Service
+  - type: web
+    name: comchatx-frontend
+    env: node
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://comchatx-backend.onrender.com/*
+
+databases:
+  - name: comchatx-db
+    plan: free
+    databaseName: comchatx
+    user: comchatx
+
