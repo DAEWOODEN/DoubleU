@@ -51,10 +51,27 @@
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir: 'dist',
     },
     server: {
       port: 3000,
+      host: '0.0.0.0', // 允许外部访问
       open: true,
+      strictPort: false,
+      allowedHosts: [
+        'localhost',
+        '.ngrok-free.app',
+        '.ngrok-free.dev',
+        '.ngrok.io',
+        '.ngrok.app',
+      ],
+      // 代理API请求到后端
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
   });
