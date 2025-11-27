@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./comchatx.db"
+    # Use /tmp for Vercel Serverless (only writable directory)
+    DATABASE_URL: str = ""
     
     # AI API Keys
     DEEPSEEK_API_KEY: str
@@ -54,6 +55,16 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
+
+# Set DATABASE_URL after settings initialization
+if not settings.DATABASE_URL:
+    if os.getenv("VERCEL"):
+        # Vercel Serverless: use /tmp (only writable directory)
+        db_path = "/tmp/comchatx.db"
+    else:
+        # Local development: use current directory
+        db_path = str(Path(__file__).parent / "comchatx.db")
+    settings.DATABASE_URL = f"sqlite+aiosqlite:///{db_path}"
 
 
 # Ensure data directory exists

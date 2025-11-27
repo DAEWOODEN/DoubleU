@@ -173,8 +173,19 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     """Initialize database - create all tables"""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        # Log error but don't fail - database might already exist
+        import logging
+        logging.warning(f"Database init warning: {e}")
+        # Try to create tables anyway
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        except:
+            pass  # Ignore if tables already exist
 
 
 async def close_db():

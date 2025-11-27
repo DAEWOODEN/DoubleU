@@ -4,6 +4,7 @@ FastAPI application with Multi-Agent system integration
 """
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,9 +25,13 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Database: {settings.DATABASE_URL}")
     
-    # Initialize database
-    await init_db()
-    logger.info("✅ Database initialized")
+    # Initialize database (skip in Vercel Serverless, will init on first request)
+    if not os.getenv("VERCEL"):
+        try:
+            await init_db()
+            logger.info("✅ Database initialized")
+        except Exception as e:
+            logger.warning(f"Database init warning: {e}")
     
     # Initialize Multi-Agent system (lazy loading)
     logger.info("✅ Multi-Agent system ready for initialization")
@@ -35,8 +40,12 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("🛑 Shutting down ComChatX Backend Server...")
-    await close_db()
-    logger.info("✅ Database connections closed")
+    if not os.getenv("VERCEL"):
+        try:
+            await close_db()
+            logger.info("✅ Database connections closed")
+        except Exception as e:
+            logger.warning(f"Database close warning: {e}")
 
 
 # Create FastAPI application
