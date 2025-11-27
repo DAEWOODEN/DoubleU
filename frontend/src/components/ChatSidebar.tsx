@@ -26,14 +26,25 @@ export function ChatSidebar({ isOpen, onClose, recentIdeas = [] }: ChatSidebarPr
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Load conversation list with titles
+  // Load conversation list with titles - always fresh start
   useEffect(() => {
-    const saved = localStorage.getItem("conversationList");
-    if (saved) {
-      setConversationList(JSON.parse(saved));
+    // Always start fresh with main conversation
+    const sessionConversations = sessionStorage.getItem("sessionConversationList");
+    
+    if (sessionConversations) {
+      try {
+        setConversationList(JSON.parse(sessionConversations));
+      } catch (err) {
+        // Fallback to fresh start
+        const initialList = ['main-conversation'];
+        setConversationList(initialList);
+        sessionStorage.setItem("sessionConversationList", JSON.stringify(initialList));
+      }
     } else {
-      setConversationList(['main-conversation']);
-      localStorage.setItem("conversationList", JSON.stringify(['main-conversation']));
+      // Start fresh with main conversation
+      const initialList = ['main-conversation'];
+      setConversationList(initialList);
+      sessionStorage.setItem("sessionConversationList", JSON.stringify(initialList));
     }
   }, []);
 
@@ -80,15 +91,35 @@ export function ChatSidebar({ isOpen, onClose, recentIdeas = [] }: ChatSidebarPr
     // Don't auto-request if conversation just switched
     const shouldRequest = messages.length === 0 && isOpen;
     if (shouldRequest) {
-      // Small delay to prevent double-requesting
+      // Small delay to prevent double-requesting and allow API to be ready
       const timer = setTimeout(() => {
-        if (messages.length === 0) {
-          requestSocraticQuestion(recentIdeas);
+        if (messages.length === 0 && !isLoading) {
+          console.log('Requesting initial question with ideas:', recentIdeas);
+          requestSocraticQuestion(recentIdeas).catch(err => {
+            console.error('Failed to request initial question:', err);
+            // Fallback: show a default welcome message if API fails
+            if (messages.length === 0) {
+              const fallbackMessages = [
+                "What's a moment from the past week that stuck with you?",
+                "Tell me about something that surprised you recently.",
+                "What's been on your mind lately?",
+                "Can you share a recent experience that felt meaningful?",
+              ];
+              const fallbackMessage = {
+                id: 'fallback-' + Date.now(),
+                role: 'assistant' as const,
+                content: fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)],
+                timestamp: new Date().toISOString(),
+              };
+              // This would need to be handled by the useAIChat hook
+              console.log('Would show fallback message:', fallbackMessage);
+            }
+          });
         }
-      }, 500);
+      }, 1000); // Increased delay to ensure API is ready
       return () => clearTimeout(timer);
     }
-  }, [isOpen, conversationId]);
+  }, [isOpen, conversationId, recentIdeas]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading || isStreaming) return;
@@ -124,11 +155,11 @@ export function ChatSidebar({ isOpen, onClose, recentIdeas = [] }: ChatSidebarPr
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-background border-l border-border flex flex-col overflow-hidden w-full h-full"
+          className="bg-background border-l border-border flex flex-col overflow-hidden w-full h-full sm:border-l-0 sm:border-r border-r-0 relative"
         >
-            <div className="h-24 border-b border-border flex items-center justify-between px-8">
-              <div className="flex items-center gap-4">
-                <h2 className="text-xl tracking-tight">Dialogue</h2>
+            <div className="h-20 sm:h-24 border-b border-border flex items-center justify-between px-4 sm:px-8">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <h2 className="text-lg sm:text-xl tracking-tight">Dialogue</h2>
                 <div className="relative">
                   <button
                     onClick={() => setShowConversationMenu(!showConversationMenu)}

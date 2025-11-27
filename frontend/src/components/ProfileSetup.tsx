@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -26,6 +26,8 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
     skill: "",
     hobby: "",
   });
+  // Add local input value state to ensure clean input for each question
+  const [currentInputValue, setCurrentInputValue] = useState("");
 
   const questions = [
     {
@@ -69,9 +71,25 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const currentQuestion = questions[step];
   const progress = ((step + 1) / questions.length) * 100;
 
+  // Reset input value when step changes
+  useEffect(() => {
+    // Get the saved value for current question, or start with empty
+    const savedValue = profile[currentQuestion.id as keyof ProfileData];
+    setCurrentInputValue(savedValue || "");
+  }, [step, currentQuestion.id]);
+
   const handleNext = () => {
+    // Save current input value to profile before moving to next step
+    if (currentInputValue.trim().length > 0) {
+      setProfile({
+        ...profile,
+        [currentQuestion.id]: currentInputValue.trim(),
+      });
+    }
+    
     if (step < questions.length - 1) {
       setStep(step + 1);
+      // Clear input for next question - useEffect will handle this
     } else {
       console.log("Completing profile setup with:", profile);
       onComplete(profile);
@@ -79,20 +97,29 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   };
 
   const handleBack = () => {
+    // Save current input value before going back
+    if (currentInputValue.trim().length > 0) {
+      setProfile({
+        ...profile,
+        [currentQuestion.id]: currentInputValue.trim(),
+      });
+    }
+    
     if (step > 0) {
       setStep(step - 1);
     }
   };
 
   const updateProfile = (value: string) => {
+    setCurrentInputValue(value);
+    // Also update profile in real-time
     setProfile({
       ...profile,
       [currentQuestion.id]: value,
     });
   };
 
-  const currentValue = profile[currentQuestion.id as keyof ProfileData];
-  const canProceed = currentValue.trim().length > 0;
+  const canProceed = currentInputValue.trim().length > 0;
 
   return (
     <div className="h-full flex items-center justify-center bg-background p-16">
@@ -127,7 +154,7 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
 
             <Input
               key={currentQuestion.id}
-              value={currentValue}
+              value={currentInputValue}
               onChange={(e) => updateProfile(e.target.value)}
               placeholder={currentQuestion.placeholder}
               className="text-lg py-6 border-border focus:border-foreground bg-transparent"

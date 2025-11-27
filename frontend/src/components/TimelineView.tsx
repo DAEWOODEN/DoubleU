@@ -34,6 +34,23 @@ export function TimelineView() {
   });
 
   useEffect(() => {
+    // Always show sample events on load - fresh start for each visitor
+    // Check sessionStorage first (current session), then fallback to sample
+    const sessionEvents = sessionStorage.getItem("sessionTimelineEvents");
+    
+    if (sessionEvents) {
+      try {
+        const loadedEvents = JSON.parse(sessionEvents);
+        if (loadedEvents && loadedEvents.length > 0) {
+          setEvents(loadedEvents);
+          return; // Exit early if session data exists
+        }
+      } catch (err) {
+        console.error('Failed to parse session events:', err);
+      }
+    }
+    
+    // Always show sample events for fresh start
     const saved = localStorage.getItem("timelineEvents");
     const hasInitialized = localStorage.getItem("timelineInitialized");
     
@@ -100,15 +117,16 @@ export function TimelineView() {
         },
       ];
       setEvents(initialEvents);
+      // Save to both sessionStorage and localStorage
+      sessionStorage.setItem("sessionTimelineEvents", JSON.stringify(initialEvents));
       localStorage.setItem("timelineEvents", JSON.stringify(initialEvents));
-      localStorage.setItem("timelineInitialized", "true");
-    } else if (saved) {
-      setEvents(JSON.parse(saved));
     }
   }, []);
 
   const saveEvents = (newEvents: TimelineEvent[]) => {
     setEvents(newEvents);
+    // Save to both sessionStorage (for this session) and localStorage
+    sessionStorage.setItem("sessionTimelineEvents", JSON.stringify(newEvents));
     localStorage.setItem("timelineEvents", JSON.stringify(newEvents));
   };
 
@@ -509,18 +527,18 @@ export function TimelineView() {
 
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wider text-muted-light">
-                  Date
-                </label>
-                <Input
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
-                  }
-                  placeholder="Sep 2023"
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-wider text-muted-light">
+                Date
+              </label>
+              <Input
+                value={formData.date}
+                onChange={(e) =>
+                  setFormData({ ...formData, date: e.target.value })
+                }
+                placeholder="Sep 2023"
                   className="w-full px-4 py-3 border border-border bg-transparent focus:border-foreground outline-none transition-colors"
-                />
+              />
               </div>
 
               <div className="space-y-2">
@@ -600,19 +618,19 @@ export function TimelineView() {
           </div>
 
           <div className="flex justify-end gap-4 pt-8 border-t border-border">
-            <button
-              onClick={() => setIsDialogOpen(false)}
-              className="text-sm uppercase tracking-wider text-muted hover:text-foreground transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
+              <button
+                onClick={() => setIsDialogOpen(false)}
+                className="text-sm uppercase tracking-wider text-muted hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
               disabled={!formData.title.trim() || !formData.date.trim()}
               className="text-sm uppercase tracking-wider px-8 py-3 bg-foreground text-background hover:bg-muted disabled:opacity-30 transition-all duration-300"
-            >
-              {editingEvent ? "Update" : "Add"}
-            </button>
+              >
+                {editingEvent ? "Update" : "Add"}
+              </button>
           </div>
         </DialogContent>
       </Dialog>

@@ -3,7 +3,27 @@
 
 // Configure your backend URL here
 // Use environment variable in production, fallback to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// When using ngrok, API requests will be proxied through Vite dev server
+function getApiBaseUrl(): string {
+  // Check if we're running on ngrok
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If accessing through ngrok, use relative path (will be proxied by Vite)
+    if (hostname.includes('ngrok') || hostname.includes('ngrok-free')) {
+      // Use empty string for relative URLs, Vite will proxy /api/* to backend
+      return '';
+    }
+    // Check if ngrok backend URL is manually set
+    const ngrokBackendUrl = localStorage.getItem('ngrok_backend_url');
+    if (ngrokBackendUrl) {
+      return ngrokBackendUrl;
+    }
+  }
+  // Fallback to environment variable or localhost
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Types matching backend schema
 export interface UserProfile {
@@ -154,10 +174,10 @@ class APIService {
     message: string,
     conversationId?: string
   ): Promise<ChatMessage> {
-    return await this.request('/api/chat/message', {
-      method: 'POST',
-      body: JSON.stringify({ message, conversationId }),
-    });
+      return await this.request('/api/chat/message', {
+        method: 'POST',
+        body: JSON.stringify({ message, conversationId }),
+      });
   }
 
   async streamMessage(
@@ -228,11 +248,49 @@ class APIService {
     recentIdeas: string[];
     conversationHistory: ChatMessage[];
   }): Promise<string> {
-    const response = await this.request('/api/chat/socratic', {
-      method: 'POST',
-      body: JSON.stringify(context),
-    });
-    return response.question || response;
+    // Use shorter timeout for Initiative Communication - 12 seconds
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 second timeout
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat/socratic`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(context),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const question = data.question || data;
+      
+      if (!question || typeof question !== 'string' || question.trim().length === 0) {
+        throw new Error('Empty question received from server');
+      }
+      
+      return question;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      console.error('Initiative Communication error:', error);
+      // Return a diverse fallback question instead of throwing
+      const fallbackQuestions = [
+        "What's a moment from the past week that stuck with you?",
+        "Tell me about something that surprised you recently.",
+        "What's been on your mind lately?",
+        "Can you share a recent experience that felt meaningful?",
+        "What caught your attention in the past few days?",
+        "What's something that made you pause and think this week?",
+        "Can you describe a moment that felt significant to you?",
+      ];
+      return fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
+    }
   }
 
   // Narrative Generation
@@ -293,17 +351,35 @@ class APIService {
       body: JSON.stringify(params),
     });
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
 
-    if (!reader) return;
+    if (!reader) {
+      throw new Error('Response body is not readable');
+    }
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      const chunk = decoder.decode(value);
-      onChunk?.(chunk);
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk) {
+          onChunk?.(chunk);
+        }
+      }
+      
+      // Decode any remaining data
+      const finalChunk = decoder.decode();
+      if (finalChunk) {
+        onChunk?.(finalChunk);
+      }
+    } finally {
+      reader.releaseLock();
     }
   }
 

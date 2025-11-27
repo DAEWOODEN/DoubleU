@@ -30,11 +30,18 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem("userProfile");
-    if (savedProfile) {
-      setProfileComplete(true);
-      loadProfile();
-    }
+    // Every page load = fresh start for each visitor
+    // Clear all previous user data on load (including essays on refresh)
+    console.log('Page loaded - resetting for fresh start');
+    
+    // Clear all user data from localStorage
+    localStorage.clear();
+    
+    // Clear all sessionStorage (including essays - fresh start on page refresh)
+    sessionStorage.clear();
+    
+    // Always start with profile setup for new visitors
+    setProfileComplete(false);
 
     // Listen for insights panel close event
     const handleCloseInsights = () => {
@@ -105,7 +112,7 @@ export default function App() {
         onToggleChat={() => setIsChatOpen(!isChatOpen)}
       />
       
-      <div className="flex-1 flex overflow-hidden mt-24 relative">
+      <div className="flex-1 flex overflow-hidden mt-16 sm:mt-24 relative">
         {!isChatOpen ? (
           <main className="w-full overflow-hidden relative">
             {renderView()}
@@ -168,7 +175,7 @@ export default function App() {
                 </div>
               </Resizable>
               
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden relative" style={{ marginTop: '-1px', height: 'calc(100% + 1px)' }}>
                 <ChatSidebar 
                   isOpen={isChatOpen} 
                   onClose={() => setIsChatOpen(false)}
@@ -183,8 +190,9 @@ export default function App() {
       {/* 设置按钮 - 左下角 */}
       <button
         onClick={() => setShowSettings(true)}
-        className="fixed bottom-8 left-8 w-10 h-10 flex items-center justify-center hover:opacity-70 transition-opacity duration-300 z-50"
+        className="fixed left-4 bottom-4 sm:left-8 sm:bottom-8 w-10 h-10 flex items-center justify-center hover:opacity-70 transition-opacity duration-300 z-[100] bg-background/80 backdrop-blur-sm border border-border/50 rounded shadow-lg"
         title="Settings"
+        style={{ position: 'fixed', left: '1rem', bottom: '1rem' }}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-foreground">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -194,8 +202,8 @@ export default function App() {
 
       {/* 设置面板 */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-background border border-border p-12 max-w-md w-full space-y-8">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-8">
+          <div className="bg-background border border-border p-6 sm:p-12 max-w-md w-full space-y-6 sm:space-y-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="text-2xl tracking-tight">Settings</h3>
               <button

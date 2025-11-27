@@ -85,6 +85,15 @@ async def generate_essay(
         
         # Generate essay using Multi-Agent system with full context
         agent_system = get_agent_system()
+        
+        # Ensure Major Agent exists for the target major
+        if request.major and request.major.strip():
+            # Create Major Agent if not exists (triggers during collection, but ensure it exists)
+            await agent_system._create_major_agent_if_needed(
+                request.major.strip(),
+                user_profile=None  # Will use agent_system.user_profile
+            )
+        
         essay_content = await agent_system.generate_essay(
             university=request.university,
             major=request.major,
@@ -191,6 +200,14 @@ async def stream_essay(
         
         # Stream essay generation with full context
         agent_system = get_agent_system()
+        
+        # Ensure Major Agent exists for the target major
+        if request.major and request.major.strip():
+            # Create Major Agent if not exists
+            await agent_system._create_major_agent_if_needed(
+                request.major.strip(),
+                user_profile=None  # Will use agent_system.user_profile
+            )
         
         async def generate_stream():
             full_content = ""
@@ -299,10 +316,37 @@ async def get_essay_feedback(
         
         # Get feedback from Audit Agent
         agent_system = get_agent_system()
+        # Get major from essay or user profile for Major Agent review
+        major = None
+        if essay_id:
+            essay_result = await db.execute(
+                select(EssayModel).where(EssayModel.id == essay_id)
+            )
+            essay = essay_result.scalar_one_or_none()
+            if essay:
+                # Try to extract major from generation params
+                if essay.generation_params:
+                    try:
+                        params = json.loads(essay.generation_params)
+                        # Major might be in params, but usually comes from request
+                        pass
+                    except:
+                        pass
+        
+        # Get major from user profile as fallback
+        from database import UserProfile as UserProfileModel
+        profile_result = await db.execute(
+            select(UserProfileModel).where(UserProfileModel.id == "default")
+        )
+        user_profile = profile_result.scalar_one_or_none()
+        if user_profile and user_profile.target_major:
+            major = user_profile.target_major
+        
         feedback = await agent_system.audit_essay(
             essay_content=essay.content,
             university=essay.university,
             word_limit=essay.word_count,
+            major=major,  # Pass major for Major Agent review
         )
         
         # Save feedback

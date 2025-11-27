@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     DEFAULT_MAX_TOKENS: int = 4000
     
     # CORS Settings
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://comchatx.icu,https://www.comchatx.icu"
     
     # Security
     SECRET_KEY: str = "your-secret-key"

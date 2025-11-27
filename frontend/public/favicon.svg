@@ -1,0 +1,10 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Elegant black background -->
+  <rect width="32" height="32" fill="#000000" rx="6"/>
+  
+  <!-- Chat bubble with "X" accent -->
+  <path d="M9 10C9 8.89543 9.89543 8 11 8H15C16.1046 8 17 8.89543 17 10V18C17 19.1046 16.1046 20 15 20H13L11 22V20C9.89543 20 9 19.1046 9 18V10Z" fill="#FFFFFF"/>
+  
+  <!-- Elegant "X" design -->
+  <path d="M21 8L23 10L19 14L23 18L21 20L17 16L13 20L11 18L15 14L11 10L13 8L17 12L21 8Z" fill="#FFFFFF" opacity="0.8"/>
+</svg>

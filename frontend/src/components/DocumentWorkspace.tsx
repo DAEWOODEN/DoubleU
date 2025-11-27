@@ -24,58 +24,46 @@ export function DocumentWorkspace() {
 
   const currentDoc = documents.find((doc) => doc.id === activeDoc);
 
-  // Load existing essays
+  // Load existing essays from sessionStorage when component mounts
+  // But only if they were created in this session (after page load)
   useEffect(() => {
-    loadEssays();
+    // Check if this is a fresh page load (App.tsx clears sessionStorage on page load)
+    // If sessionStorage was just cleared, don't load essays
+    const savedEssays = sessionStorage.getItem("sessionEssays");
+    const sessionInitialized = sessionStorage.getItem("_documents_initialized");
+    
+    if (savedEssays && sessionInitialized) {
+      // Only load if documents were initialized in this session (after page load)
+      try {
+        const parsedEssays = JSON.parse(savedEssays);
+        if (Array.isArray(parsedEssays) && parsedEssays.length > 0) {
+          setDocuments(parsedEssays);
+          // Set the first essay as active if available
+          if (parsedEssays[0]) {
+            setActiveDoc(parsedEssays[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to parse saved essays:", err);
+      }
+    } else {
+      // Fresh page load - ensure empty state
+      setDocuments([]);
+      setActiveDoc("");
+    }
   }, []);
 
-  const loadEssays = async () => {
-    try {
-      const essays = await api.listEssays();
-      setDocuments(essays);
-      if (essays.length > 0 && !activeDoc) {
-        setActiveDoc(essays[0].id);
-      }
-    } catch (err) {
-      console.error("Failed to load essays:", err);
-      // Use mock data if API fails
-      setDocuments([
-        {
-          id: "1",
-          university: "Stanford",
-          version: 1,
-          content: `As someone deeply passionate about the intersection of artificial intelligence and education, I have always believed that technology can bridge the gap in educational resources.
-
-During my sophomore year, I volunteered to teach in a remote mountain village in Guizhou. The experience was transformative. I witnessed firsthand how brilliant young minds were constrained by lack of access to quality learning materials. This sparked a question that would define my path: How could I use my computer science knowledge to create meaningful change?
-
-Upon returning to campus, I began developing an AI-powered learning assistant. From user research to algorithm design, each step presented unique challenges. The most memorable moment came when I received feedback from a student in the mountains. He said the tool made him "feel that learning could be fun for the first time." In that moment, I understood the true warmth of technology.
-
-This experience not only honed my technical abilities but, more importantly, clarified my future direction. At Stanford, I hope to continue this journey, deeply integrating AI with education to develop intelligent tools that can truly benefit more students.`,
-          status: "draft",
-          wordCount: 287,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: "2",
-          university: "MIT",
-          version: 1,
-          content: `Technology and education have been my twin passions. Growing up where educational resources were scarce, I witnessed how technology could bridge privilege and opportunity.
-
-During my sophomore year, I volunteered in a remote village. The experience was transformative—brilliant minds constrained by lack of access to quality materials.
-
-Back on campus, I developed an AI learning assistant. The technical challenges were significant, but understanding what students truly needed was harder.
-
-At MIT, I hope to deepen my understanding of AI and education technology, creating scalable solutions with leading researchers.`,
-          status: "draft",
-          wordCount: 215,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
-      setActiveDoc("1");
+  // Save essays to sessionStorage whenever documents change
+  // Mark as initialized so we know essays were created in this session
+  useEffect(() => {
+    if (documents.length > 0) {
+      sessionStorage.setItem("sessionEssays", JSON.stringify(documents));
+      sessionStorage.setItem("_documents_initialized", "true");
+    } else {
+      // Only clear if explicitly empty (not on initial mount)
+      sessionStorage.removeItem("sessionEssays");
     }
-  };
+  }, [documents]);
 
   const handleGenerate = async () => {
     if (!generateParams.university.trim()) {
@@ -91,32 +79,50 @@ At MIT, I hope to deepen my understanding of AI and education technology, creati
     setGeneratingContent("");
     setShowGenerateDialog(false);
 
+    // Use a local variable to collect complete content during streaming
+    let fullContent = "";
+
     try {
       await api.streamEssay(generateParams, (chunk) => {
+        fullContent += chunk;
         setGeneratingContent((prev) => prev + chunk);
       });
 
-      // Save the generated essay
+      // Wait a bit to ensure state is updated, then create essay with complete content
+      // Use the fullContent variable which has the complete text
+      const finalContent = fullContent || generatingContent;
+      
+      if (!finalContent || finalContent.trim().length === 0) {
+        throw new Error("Generated essay content is empty");
+      }
+
+      // Save the generated essay with complete content
+      // Only keep in memory for current session (not persisted)
       const newEssay: Essay = {
         id: Date.now().toString(),
         university: generateParams.university,
         version: 1,
-        content: generatingContent,
+        content: finalContent, // Use the complete content from streaming
         status: "draft",
-        wordCount: generatingContent.split(/\s+/).length,
+        wordCount: finalContent.split(/\s+/).filter((w) => w.length > 0).length,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      await api.saveEssay(newEssay);
-      setDocuments((prev) => [...prev, newEssay]);
+      // Update state with the new essay (will be saved to sessionStorage via useEffect)
+      setDocuments((prev) => {
+        const updated = [...prev, newEssay];
+        // Also save to sessionStorage immediately
+        sessionStorage.setItem("sessionEssays", JSON.stringify(updated));
+        return updated;
+      });
       setActiveDoc(newEssay.id);
       setGeneratingContent("");
+      setIsGenerating(false); // Set to false before showing success
       toast.success("Essay generated successfully!");
     } catch (err) {
       console.error("Failed to generate essay:", err);
       toast.error("Failed to generate essay. Please try again.");
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -132,16 +138,13 @@ At MIT, I hope to deepen my understanding of AI and education technology, creati
       updatedAt: new Date().toISOString(),
     };
 
-    setDocuments((prev) =>
-      prev.map((doc) => (doc.id === currentDoc.id ? updated : doc))
-    );
-
-    // Auto-save
-    try {
-      await api.saveEssay(updated);
-    } catch (err) {
-      console.error("Failed to save essay:", err);
-    }
+    // Update state and sync to sessionStorage
+    setDocuments((prev) => {
+      const updatedDocs = prev.map((doc) => (doc.id === currentDoc.id ? updated : doc));
+      // Save to sessionStorage immediately
+      sessionStorage.setItem("sessionEssays", JSON.stringify(updatedDocs));
+      return updatedDocs;
+    });
   };
 
   const copyToClipboard = () => {
@@ -154,17 +157,15 @@ At MIT, I hope to deepen my understanding of AI and education technology, creati
   const deleteEssay = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm("Delete this essay?")) {
-      try {
-        // Delete from backend
-        await api.deleteEssay(id);
-      } catch (err) {
-        console.error("Failed to delete essay from backend:", err);
-        // Continue with frontend deletion even if backend fails
-      }
-      
-      // Remove from frontend state
+      // Remove from frontend state and sessionStorage
       const filtered = documents.filter((doc) => doc.id !== id);
       setDocuments(filtered);
+      // Update sessionStorage
+      if (filtered.length > 0) {
+        sessionStorage.setItem("sessionEssays", JSON.stringify(filtered));
+      } else {
+        sessionStorage.removeItem("sessionEssays");
+      }
       if (activeDoc === id && filtered.length > 0) {
         setActiveDoc(filtered[0].id);
       } else if (filtered.length === 0) {
@@ -182,13 +183,16 @@ At MIT, I hope to deepen my understanding of AI and education technology, creati
 
   const finishRename = () => {
     if (editingDocName && newDocName.trim()) {
-      setDocuments((prev) =>
-        prev.map((doc) =>
+      setDocuments((prev) => {
+        const updated = prev.map((doc) =>
           doc.id === editingDocName
             ? { ...doc, university: newDocName.trim() }
             : doc
-        )
-      );
+        );
+        // Save to sessionStorage immediately
+        sessionStorage.setItem("sessionEssays", JSON.stringify(updated));
+        return updated;
+      });
     }
     setEditingDocName(null);
     setNewDocName("");

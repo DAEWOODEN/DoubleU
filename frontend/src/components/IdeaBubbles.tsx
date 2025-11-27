@@ -32,12 +32,37 @@ export function IdeaBubbles() {
   const animationFrameRef = useRef<number>();
 
   useEffect(() => {
+    // Always show sample ideas for fresh start - every page load
+    // Check sessionStorage first (current session only)
+    const sessionIdeas = sessionStorage.getItem("sessionIdeas");
+    
+    if (sessionIdeas) {
+      try {
+        const loadedIdeas = JSON.parse(sessionIdeas);
+        if (loadedIdeas && loadedIdeas.length > 0) {
+          setIdeas(
+            loadedIdeas.map((idea: Idea) => ({
+              ...idea,
+              velocity: idea.velocity || {
+                x: (Math.random() - 0.5) * 0.3,
+                y: (Math.random() - 0.5) * 0.3,
+              },
+              inStorage: idea.inStorage || false,
+            }))
+          );
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to parse session ideas:', err);
+      }
+    }
+    
+    // Always show sample ideas for fresh start
     const saved = localStorage.getItem("ideas");
     const hasInitialized = localStorage.getItem("ideasInitialized");
     
     // If no saved data or user cleared everything, show sample ideas
-    if (!saved || (!hasInitialized && (!saved || JSON.parse(saved).length === 0)) || 
-        (saved && JSON.parse(saved).length === 0 && !hasInitialized)) {
+    if (!saved || !hasInitialized || (saved && JSON.parse(saved).length === 0)) {
       const sampleIdeas: Idea[] = [
         {
           id: "sample-1",
@@ -132,6 +157,8 @@ export function IdeaBubbles() {
 
   const saveIdeas = (newIdeas: Idea[]) => {
     setIdeas(newIdeas);
+    // Save to both sessionStorage (for this session) and localStorage
+    sessionStorage.setItem("sessionIdeas", JSON.stringify(newIdeas));
     localStorage.setItem("ideas", JSON.stringify(newIdeas));
   };
 
@@ -214,24 +241,24 @@ export function IdeaBubbles() {
     const x = idea.position.x + info.offset.x;
     const y = idea.position.y + info.offset.y;
 
-      // Check if dropped on storage button
-      if (storageButtonRef.current && !idea.inStorage) {
-        const buttonRect = storageButtonRef.current.getBoundingClientRect();
-        const bubbleRect = {
-          left: x,
-          top: y,
-          right: x + getDisplaySize(idea),
-          bottom: y + getDisplaySize(idea),
-        };
+    // Check if dropped on storage button
+    if (storageButtonRef.current && !idea.inStorage) {
+      const buttonRect = storageButtonRef.current.getBoundingClientRect();
+      const bubbleRect = {
+        left: x,
+        top: y,
+        right: x + getDisplaySize(idea),
+        bottom: y + getDisplaySize(idea),
+      };
 
         // Must touch the BOX button to store (no expansion)
         const dropZoneExpansion = 0;
-        const expandedButtonRect = {
-          left: buttonRect.left - dropZoneExpansion,
-          right: buttonRect.right + dropZoneExpansion,
-          top: buttonRect.top - dropZoneExpansion,
-          bottom: buttonRect.bottom + dropZoneExpansion,
-        };
+      const expandedButtonRect = {
+        left: buttonRect.left - dropZoneExpansion,
+        right: buttonRect.right + dropZoneExpansion,
+        top: buttonRect.top - dropZoneExpansion,
+        bottom: buttonRect.bottom + dropZoneExpansion,
+      };
 
       const isOverButton =
         bubbleRect.right > expandedButtonRect.left &&

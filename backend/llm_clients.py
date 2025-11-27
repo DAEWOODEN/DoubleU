@@ -24,7 +24,7 @@ class DeepSeekClient:
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            timeout=60.0,
+            timeout=30.0,  # Reduced from 60 to 30 seconds for faster failure detection
         )
     
     async def chat_completion(
@@ -102,7 +102,7 @@ class MiniMaxClient:
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
-            timeout=60.0,
+            timeout=30.0,  # Reduced from 60 to 30 seconds for faster failure detection
         )
     
     def _extract_group_id(self) -> str:
