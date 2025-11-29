@@ -1,6 +1,7 @@
 """
 Vercel Serverless Function Entry Point
 This file is required for Vercel to deploy FastAPI as serverless functions
+Vercel automatically handles ASGI applications, so we can directly export the FastAPI app
 """
 import os
 import sys
@@ -18,12 +19,12 @@ os.chdir(str(backend_dir))
 
 # Now import main app
 try:
-    from mangum import Mangum
     from main import app
     
-    # Create ASGI handler for Vercel
-    # Directly export Mangum instance - Vercel will handle it correctly
-    handler = Mangum(app, lifespan="off")
+    # Vercel automatically handles ASGI applications (FastAPI is ASGI-compatible)
+    # No need for Mangum wrapper - Vercel will handle it directly
+    # Export the app directly
+    handler = app
         
 except ImportError as e:
     # Better error handling for import issues
@@ -32,7 +33,6 @@ except ImportError as e:
     print(error_msg, file=sys.stderr)
     
     # Create a minimal error handler
-    from mangum import Mangum
     from fastapi import FastAPI
     
     error_app = FastAPI()
@@ -40,7 +40,7 @@ except ImportError as e:
     async def error_handler():
         return {"error": "Import failed", "detail": str(e)}
     
-    handler = Mangum(error_app, lifespan="off")
+    handler = error_app
         
 except Exception as e:
     import traceback
