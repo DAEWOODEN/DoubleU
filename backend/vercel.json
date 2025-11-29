@@ -3,11 +3,11 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "/api/index.py"
     }
   ],
   "functions": {
-    "api/index.py": {
+    "/api/index.py": {
       "maxDuration": 30
     }
   }
