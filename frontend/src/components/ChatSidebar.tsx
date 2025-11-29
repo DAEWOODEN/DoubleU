@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Textarea } from "./ui/textarea";
 import { useAIChat } from "../hooks/useAIChat";
+import { ChatMessage } from "../services/api";
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -98,28 +99,24 @@ export function ChatSidebar({ isOpen, onClose, recentIdeas = [] }: ChatSidebarPr
           requestSocraticQuestion(recentIdeas).catch(err => {
             console.error('Failed to request initial question:', err);
             // Fallback: show a default welcome message if API fails
-            if (messages.length === 0) {
-              const fallbackMessages = [
-                "What's a moment from the past week that stuck with you?",
-                "Tell me about something that surprised you recently.",
-                "What's been on your mind lately?",
-                "Can you share a recent experience that felt meaningful?",
-              ];
-              const fallbackMessage = {
-                id: 'fallback-' + Date.now(),
-                role: 'assistant' as const,
-                content: fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)],
-                timestamp: new Date().toISOString(),
-              };
-              // This would need to be handled by the useAIChat hook
-              console.log('Would show fallback message:', fallbackMessage);
-            }
+            // The useAIChat hook will handle adding the fallback message
+            const fallbackMessages = [
+              "What's a moment from the past week that stuck with you?",
+              "Tell me about something that surprised you recently.",
+              "What's been on your mind lately?",
+              "Can you share a recent experience that felt meaningful?",
+              "What caught your attention in the past few days?",
+              "What's something that made you pause and think this week?",
+            ];
+            const fallbackContent = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+            // Fallback message will be handled by useAIChat hook's requestSocraticQuestion
+            // The hook already has fallback logic, so we don't need to manually add here
           });
         }
       }, 1000); // Increased delay to ensure API is ready
       return () => clearTimeout(timer);
     }
-  }, [isOpen, conversationId, recentIdeas]);
+  }, [isOpen, conversationId, recentIdeas, messages.length, isLoading]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading || isStreaming) return;
