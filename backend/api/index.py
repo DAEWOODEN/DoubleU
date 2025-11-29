@@ -22,12 +22,8 @@ try:
     from main import app
     
     # Create ASGI handler for Vercel
-    # lifespan="off" because Vercel handles serverless lifecycle differently
-    mangum_handler = Mangum(app, lifespan="off")
-    
-    # Wrap in a function to ensure it's callable
-    def handler(event, context):
-        return mangum_handler(event, context)
+    # Directly export Mangum instance - Vercel will handle it correctly
+    handler = Mangum(app, lifespan="off")
         
 except ImportError as e:
     # Better error handling for import issues
@@ -44,9 +40,7 @@ except ImportError as e:
     async def error_handler():
         return {"error": "Import failed", "detail": str(e)}
     
-    mangum_handler = Mangum(error_app, lifespan="off")
-    def handler(event, context):
-        return mangum_handler(event, context)
+    handler = Mangum(error_app, lifespan="off")
         
 except Exception as e:
     import traceback
