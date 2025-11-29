@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler
 import os
 import sys
 import json
+import asyncio
 from pathlib import Path
 
 # Setup path before any imports
@@ -14,8 +15,36 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 os.chdir(str(_backend_dir))
 
+# Set VERCEL environment variable
+os.environ["VERCEL"] = "1"
+
 # Import FastAPI app
 from main import app as fastapi_app
+from database import init_db
+
+# Initialize database on module load (create tables)
+# This runs once per cold start
+_db_initialized = False
+
+def _ensure_db_initialized():
+    """Ensure database is initialized (tables created)"""
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            # Run async init_db in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(init_db())
+            loop.close()
+            _db_initialized = True
+            print("Database initialized successfully")
+        except Exception as e:
+            print(f"Database init error: {e}")
+            # Try again on next request
+            pass
+
+# Initialize on module load
+_ensure_db_initialized()
 
 # CORS allowed origins
 ALLOWED_ORIGINS = [
