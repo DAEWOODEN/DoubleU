@@ -20,33 +20,10 @@ os.environ["VERCEL"] = "1"
 
 # Import FastAPI app
 from main import app as fastapi_app
-from database import init_db
 from loguru import logger
 
-# Initialize database on module load (create tables)
-# This runs once per cold start
-_db_initialized = False
-
-def _ensure_db_initialized():
-    """Ensure database is initialized (tables created)"""
-    global _db_initialized
-    if not _db_initialized:
-        try:
-            logger.info("Starting database initialization in serverless handler...")
-            # Run async init_db in sync context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(init_db())
-            loop.close()
-            _db_initialized = True
-            logger.info("✅ Database initialized successfully in serverless handler")
-        except Exception as e:
-            logger.error(f"❌ Database init error: {e}")
-            # Try again on next request
-            pass
-
-# Initialize on module load
-_ensure_db_initialized()
+# Set VERCEL environment variable explicitly for other modules
+os.environ["VERCEL"] = "1"
 
 # CORS allowed origins
 ALLOWED_ORIGINS = [

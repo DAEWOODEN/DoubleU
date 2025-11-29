@@ -25,13 +25,13 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Database: {settings.DATABASE_URL}")
     
-    # Initialize database (skip in Vercel Serverless, will init on first request)
-    if not os.getenv("VERCEL"):
-        try:
-            await init_db()
-            logger.info("✅ Database initialized")
-        except Exception as e:
-            logger.warning(f"Database init warning: {e}")
+    # Initialize database
+    # In Vercel Serverless, /tmp is ephemeral, so we MUST recreate tables on every startup
+    try:
+        await init_db()
+        logger.info("✅ Database initialized (tables created)")
+    except Exception as e:
+        logger.warning(f"Database init warning: {e}")
     
     # Initialize Multi-Agent system (lazy loading)
     logger.info("✅ Multi-Agent system ready for initialization")
@@ -40,12 +40,11 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("🛑 Shutting down ComChatX Backend Server...")
-    if not os.getenv("VERCEL"):
-        try:
-            await close_db()
-            logger.info("✅ Database connections closed")
-        except Exception as e:
-            logger.warning(f"Database close warning: {e}")
+    try:
+        await close_db()
+        logger.info("✅ Database connections closed")
+    except Exception as e:
+        logger.warning(f"Database close warning: {e}")
 
 
 # Create FastAPI application
@@ -54,12 +53,10 @@ app = FastAPI(
     description="Multi-Agent System for Personal Statement Generation",
     version="1.0.0",
     lifespan=lifespan,
-    # Set docs URLs
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
-    # Set root_path for Vercel rewrites
-    root_path="/api" if os.getenv("VERCEL") else "",
+    # Explicitly set paths to match Vercel routing structure
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 
