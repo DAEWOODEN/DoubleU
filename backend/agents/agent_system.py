@@ -209,6 +209,10 @@ class MultiAgentSystem:
         try:
             conversation_length = len(conversation_history)
             
+            # If this is the very first interaction, use the specialized welcome generator
+            if conversation_length == 0:
+                return await self._generate_welcome_question()
+            
             # Build context from recent conversation
             recent_context = ""
             if conversation_history and len(conversation_history) > 0:
@@ -249,16 +253,16 @@ class MultiAgentSystem:
             # Determine conversation stage
             if conversation_length < 3:
                 stage = "initial_exploration"
-                instruction = "Start with a warm, open-ended question that invites the user to share a recent meaningful experience. Be specific and relatable."
+                instruction = "Start with a deep, thought-provoking question about their specific ideas or motivation. Avoid generic pleasantries. Dive straight into the core of what they shared."
             elif conversation_length < 8:
                 stage = "deepening"
-                instruction = "Based on what the user shared, ask about specific details, feelings, or moments. Help them explore the significance of their experience."
+                instruction = "Focus intensely on the ideas they just expressed. Challenge them to think deeper about the *why* and *how*. Connect their idea to a broader theme of personal growth or intellectual curiosity."
             elif conversation_length < 15:
                 stage = "connecting"
-                instruction = "Help the user connect their experiences. Ask how different moments relate, or what patterns they notice in their journey."
+                instruction = "Explore the deeper implications of their experiences. How does this specific idea connect to their larger worldview or future impact? Push for profound insight."
             else:
                 stage = "future_oriented"
-                instruction = "Guide the user to reflect on how their experiences shape their future goals and aspirations."
+                instruction = "Guide them to synthesize their ideas into a coherent narrative theme. Ask how these deep realizations shape their future path."
             
             # Enhanced prompt for variety and uniqueness
             import random
@@ -267,19 +271,19 @@ class MultiAgentSystem:
             
             # Vary the prompt style to encourage different responses
             style_variations = [
-                "Generate ONE natural, conversational question (max 25 words)",
-                "Create ONE warm, engaging question (max 25 words)",
-                "Craft ONE thoughtful, inviting question (max 25 words)",
-                "Formulate ONE genuine, curious question (max 25 words)",
+                "Generate ONE profound, insight-seeking question (max 25 words)",
+                "Create ONE deep, idea-focused question (max 25 words)",
+                "Craft ONE challenging yet supportive question about their thinking (max 25 words)",
+                "Formulate ONE question that explores the 'why' behind their idea (max 25 words)",
             ]
             prompt_start = random.choice(style_variations)
             
             prompt = f"""{prompt_start} that:
 - Is UNIQUE and different from previous questions
-- Invites sharing a recent experience
-- Feels like a friend asking, not an interview
-- Avoids mentioning field names or labels
-- Focuses on feelings or moments
+- Focuses on the USER'S IDEAS and THOUGHTS, not just events
+- Digs for deeper meaning, motivation, or philosophy
+- Avoids superficial questions like "how did that make you feel"
+- Uses sophisticated, intellectual but accessible language
 - Uses different phrasing than before (avoid repetition)
 
 {instruction}
@@ -896,13 +900,34 @@ CRITICAL INSTRUCTIONS (MUST FOLLOW):
             yield random.choice(fallbacks)
     
     async def _generate_welcome_question(self) -> str:
-        """Generate initial welcome question"""
-        welcome_questions = [
-            "Welcome! I'm here to help you explore your experiences and craft an outstanding personal statement. What's been on your mind lately regarding your college applications?",
-            "Hi! I'd love to learn about your journey. What experiences or moments have shaped who you are today?",
-            "Hello! Let's start by exploring what makes you unique. What are you most passionate about?",
-        ]
-        return welcome_questions[0]
+        """Generate initial welcome question using LLM based on user profile"""
+        try:
+            # Build profile context
+            profile_data = self.user_profile.get("profile", {}) if self.user_profile else {}
+            profile_context = "A student applying for college/grad school."
+            if profile_data:
+                parts = []
+                if profile_data.get('name'): parts.append(f"Name: {profile_data.get('name')}")
+                if profile_data.get('targetMajor'): parts.append(f"Target Major: {profile_data.get('targetMajor')}")
+                if profile_data.get('targetUniversities'): parts.append(f"Target Schools: {profile_data.get('targetUniversities')}")
+                if profile_data.get('currentStatus'): parts.append(f"Status: {profile_data.get('currentStatus')}")
+                if profile_data.get('idol'): parts.append(f"Idol: {profile_data.get('idol')}")
+                profile_context = ", ".join(parts)
+
+            messages = [
+                {"role": "system", "content": "You are an expert study abroad consultant. Generate a warm, short, personalized opening question (max 1 sentence) to start a conversation about their application essay. Focus on their specific major or motivation. Be encouraging."},
+                {"role": "user", "content": f"Generate a welcome message for: {profile_context}"}
+            ]
+            
+            response = await self.deepseek_client.chat_completion(
+                messages=messages,
+                temperature=0.7,
+                max_tokens=60,
+            )
+            return response["choices"][0]["message"]["content"].strip().strip('"')
+        except Exception as e:
+            logger.error(f"Error generating welcome: {e}")
+            return "Welcome! I'm here to help you craft your personal statement. What motivates you to pursue this path?"
     
     async def _run_narrator(
         self,
