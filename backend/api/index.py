@@ -14,12 +14,16 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 os.chdir(str(_backend_dir))
 
-# Import FastAPI app and create TestClient
+# Import FastAPI app
 from main import app as fastapi_app
-from starlette.testclient import TestClient
 
-# Create a single TestClient instance
-_test_client = TestClient(fastapi_app, raise_server_exceptions=False)
+# CORS allowed origins
+ALLOWED_ORIGINS = [
+    "https://comchatx.icu",
+    "https://www.comchatx.icu",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
 
 
 class handler(BaseHTTPRequestHandler):
@@ -28,34 +32,54 @@ class handler(BaseHTTPRequestHandler):
     Vercel expects a class named 'handler' that inherits from BaseHTTPRequestHandler
     """
     
+    def _get_origin(self):
+        """Get and validate origin header"""
+        origin = self.headers.get("Origin", "")
+        if origin in ALLOWED_ORIGINS:
+            return origin
+        return ALLOWED_ORIGINS[0]  # Default to main domain
+    
+    def _add_cors_headers(self):
+        """Add CORS headers to response"""
+        origin = self._get_origin()
+        self.send_header("Access-Control-Allow-Origin", origin)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        self.send_header("Access-Control-Allow-Credentials", "true")
+        self.send_header("Access-Control-Max-Age", "86400")
+    
     def _call_fastapi(self, method: str, body: bytes = b""):
         """Call FastAPI app using TestClient"""
-        # Build headers dict (filter out problematic headers)
-        headers = {}
-        for key, value in self.headers.items():
-            key_lower = key.lower()
-            if key_lower not in ('host', 'content-length'):
-                headers[key] = value
+        from starlette.testclient import TestClient
         
-        url = self.path
-        
-        # Make request based on method
-        if method == "GET":
-            return _test_client.get(url, headers=headers)
-        elif method == "POST":
-            return _test_client.post(url, content=body, headers=headers)
-        elif method == "PUT":
-            return _test_client.put(url, content=body, headers=headers)
-        elif method == "DELETE":
-            return _test_client.delete(url, headers=headers)
-        elif method == "OPTIONS":
-            return _test_client.options(url, headers=headers)
-        elif method == "PATCH":
-            return _test_client.patch(url, content=body, headers=headers)
-        elif method == "HEAD":
-            return _test_client.head(url, headers=headers)
-        else:
-            return _test_client.get(url, headers=headers)
+        # Create TestClient per request to avoid state issues
+        with TestClient(fastapi_app, raise_server_exceptions=False) as client:
+            # Build headers dict (filter out problematic headers)
+            headers = {}
+            for key, value in self.headers.items():
+                key_lower = key.lower()
+                if key_lower not in ('host', 'content-length', 'connection'):
+                    headers[key] = value
+            
+            url = self.path
+            
+            # Make request based on method
+            if method == "GET":
+                return client.get(url, headers=headers)
+            elif method == "POST":
+                return client.post(url, content=body, headers=headers)
+            elif method == "PUT":
+                return client.put(url, content=body, headers=headers)
+            elif method == "DELETE":
+                return client.delete(url, headers=headers)
+            elif method == "OPTIONS":
+                return client.options(url, headers=headers)
+            elif method == "PATCH":
+                return client.patch(url, content=body, headers=headers)
+            elif method == "HEAD":
+                return client.head(url, headers=headers)
+            else:
+                return client.get(url, headers=headers)
     
     def _handle_request(self, method: str):
         """Handle HTTP request"""
@@ -70,8 +94,13 @@ class handler(BaseHTTPRequestHandler):
             # Send response
             self.send_response(response.status_code)
             
+            # Add CORS headers
+            self._add_cors_headers()
+            
             # Send headers (skip problematic ones)
-            skip_headers = {'content-encoding', 'transfer-encoding', 'connection'}
+            skip_headers = {'content-encoding', 'transfer-encoding', 'connection', 
+                          'access-control-allow-origin', 'access-control-allow-methods',
+                          'access-control-allow-headers', 'access-control-allow-credentials'}
             for key, value in response.headers.items():
                 if key.lower() not in skip_headers:
                     self.send_header(key, value)
@@ -84,6 +113,7 @@ class handler(BaseHTTPRequestHandler):
             import traceback
             error_detail = traceback.format_exc()
             self.send_response(500)
+            self._add_cors_headers()
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({
@@ -104,7 +134,10 @@ class handler(BaseHTTPRequestHandler):
         self._handle_request("DELETE")
     
     def do_OPTIONS(self):
-        self._handle_request("OPTIONS")
+        """Handle CORS preflight requests"""
+        self.send_response(200)
+        self._add_cors_headers()
+        self.end_headers()
     
     def do_PATCH(self):
         self._handle_request("PATCH")
