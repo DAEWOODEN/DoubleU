@@ -158,8 +158,40 @@ class Essay(Base):
 
 # Database session management
 
+# Track initialization state per process
+_db_initialized = False
+
+async def ensure_db_initialized():
+    """Ensure database tables exist - critical for Serverless environment"""
+    global _db_initialized
+    if _db_initialized:
+        return
+
+    try:
+        # Check if tables exist by trying to query one
+        async with engine.begin() as conn:
+            # Using user_profiles as sentinel table
+            # This will throw if table doesn't exist
+            await conn.run_sync(Base.metadata.create_all)
+            _db_initialized = True
+            import logging
+            logging.info("Database initialized in get_db dependency")
+    except Exception as e:
+        import logging
+        logging.error(f"Database initialization check failed: {e}")
+        # Try to force create again just in case
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        except:
+            pass
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency to get database session"""
+    # Ensure DB is initialized before every session creation
+    # This overhead is negligible after first run, but saves us in Serverless
+    await ensure_db_initialized()
+    
     async with async_session_maker() as session:
         try:
             yield session
@@ -173,9 +205,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     """Initialize database - create all tables"""
+    global _db_initialized
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+        _db_initialized = True
     except Exception as e:
         # Log error but don't fail - database might already exist
         import logging
