@@ -41,6 +41,7 @@ export default function App() {
     sessionStorage.clear();
     
     // Always start with profile setup for new visitors
+    // Force reset state to ensure ProfileSetup renders
     setProfileComplete(false);
 
     // Listen for insights panel close event
@@ -54,17 +55,8 @@ export default function App() {
     };
   }, []);
 
-  const loadProfile = async () => {
-    try {
-      const profile = await api.getProfile();
-      if (profile) {
-        setProfileComplete(true);
-      }
-    } catch (err) {
-      console.error("Failed to load profile:", err);
-    }
-  };
-
+  // loadProfile function removed to prevent auto-loading of previous session data
+  
   const handleProfileComplete = async (data: ProfileData) => {
     console.log("Profile data received:", data);
     localStorage.setItem("userProfile", JSON.stringify(data));

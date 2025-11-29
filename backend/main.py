@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html
 import uvicorn
 from loguru import logger
 
@@ -53,11 +54,31 @@ app = FastAPI(
     description="Multi-Agent System for Personal Statement Generation",
     version="1.0.0",
     lifespan=lifespan,
-    # Explicitly set paths to match Vercel routing structure
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    # Disable default docs URLs to manually handle them
+    docs_url=None,
+    redoc_url=None,
     openapi_url="/api/openapi.json",
 )
+
+
+# Custom Docs Routes
+@app.get("/api/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    """Custom Swagger UI route to ensure it works behind Vercel rewrites"""
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title=app.title + " - Swagger UI",
+    )
+
+
+@app.get("/api/redoc", include_in_schema=False)
+async def redoc_html():
+    """Custom ReDoc route"""
+    from fastapi.openapi.docs import get_redoc_html
+    return get_redoc_html(
+        openapi_url="/api/openapi.json",
+        title=app.title + " - ReDoc",
+    )
 
 
 # Configure CORS
