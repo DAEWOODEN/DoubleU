@@ -12,10 +12,14 @@ from datetime import datetime
 
 from database import get_db, NarrativeEvent as NarrativeEventModel, Idea as IdeaModel
 from agents import get_agent_system
+from llm_clients import get_deepseek_client
 from .schemas import (
     NarrativeGenerateRequest,
     NarrativeEventResponse,
     NarrativeSuggestionsResponse,
+    RoadmapRequest,
+    RoadmapResponse,
+    RoadmapStep,
 )
 
 router = APIRouter()
@@ -193,4 +197,64 @@ async def get_narrative_suggestions(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error getting suggestions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/roadmap", response_model=RoadmapResponse)
+async def generate_roadmap(request: RoadmapRequest):
+    """Generate application roadmap based on university and major"""
+    try:
+        client = get_deepseek_client()
+        
+        prompt = f"""Generate a specific, high-quality 5-8 step application roadmap for a student applying to {request.university} for {request.major}.
+        
+        Focus on the specific requirements and competitive advantages for this specific program.
+        Include a mix of:
+        - Academic requirements (GPA, specific courses)
+        - Standardized tests (SAT/ACT/GRE etc if applicable)
+        - Extracurricular activities & Leadership
+        - Application components (Essays, Recommendations)
+        
+        Return STRICT JSON format with this structure:
+        {{
+            "steps": [
+                {{
+                    "title": "Step Title",
+                    "description": "Detailed description of what to do",
+                    "category": "Academic" | "Test" | "Extracurricular" | "Application"
+                }}
+            ]
+        }}
+        """
+        
+        messages = [
+            {"role": "system", "content": "You are an expert college admissions consultant. Output JSON only."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        response = await client.chat_completion(
+            messages=messages,
+            temperature=0.7,
+            max_tokens=1000,
+        )
+        
+        content = response["choices"][0]["message"]["content"]
+        
+        # Clean up JSON if needed
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+            
+        data = json.loads(content)
+        return RoadmapResponse(steps=data.get("steps", []))
+        
+    except Exception as e:
+        logger.error(f"Error generating roadmap: {e}")
+        # Fallback if LLM fails
+        return RoadmapResponse(steps=[
+            RoadmapStep(title="Academic Excellence", description="Maintain a high GPA particularly in major-related courses.", category="Academic"),
+            RoadmapStep(title="Standardized Tests", description="Prepare for and take required standardized tests.", category="Test"),
+            RoadmapStep(title="Extracurricular Depth", description="Demonstrate leadership and impact in activities.", category="Extracurricular"),
+            RoadmapStep(title="Personal Statement", description="Draft a compelling narrative about your journey.", category="Application"),
+        ])
 

@@ -16,6 +16,9 @@ class UserProfileCreate(BaseModel):
     mbti: Optional[str] = None
     skill: Optional[str] = None
     hobby: Optional[str] = None
+    idol: Optional[str] = None
+    current_status: Optional[str] = Field(None, alias="currentStatus")
+    budget: Optional[str] = None
     
     class Config:
         populate_by_name = True
@@ -29,6 +32,9 @@ class UserProfileResponse(BaseModel):
     mbti: Optional[str] = None
     skill: Optional[str] = None
     hobby: Optional[str] = None
+    idol: Optional[str] = None
+    current_status: Optional[str] = Field(None, alias="currentStatus")
+    budget: Optional[str] = None
     created_at: datetime = Field(..., alias="createdAt")
     updated_at: datetime = Field(..., alias="updatedAt")
     
@@ -167,6 +173,21 @@ class NarrativeSuggestionsResponse(BaseModel):
     
     class Config:
         populate_by_name = True
+
+
+class RoadmapRequest(BaseModel):
+    university: str
+    major: str
+
+
+class RoadmapStep(BaseModel):
+    title: str
+    description: str
+    category: str  # e.g., "Academic", "Standardized Test", "Extracurricular", "Application"
+
+
+class RoadmapResponse(BaseModel):
+    steps: List[RoadmapStep]
 
 
 # Essay Schemas

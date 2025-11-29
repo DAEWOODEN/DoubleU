@@ -34,6 +34,9 @@ export interface UserProfile {
   mbti: string;
   skill: string;
   hobby: string;
+  idol: string;
+  currentStatus: string;
+  budget: string;
 }
 
 export interface Idea {
@@ -85,6 +88,12 @@ export interface Essay {
   createdAt: string;
   updatedAt: string;
   feedback?: string;
+}
+
+export interface RoadmapStep {
+  title: string;
+  description: string;
+  category: string;
 }
 
 class APIService {
@@ -317,6 +326,13 @@ class APIService {
     missingAspects: string[];
   }> {
     return this.request('/api/narrative/suggestions');
+  }
+
+  async getRoadmap(university: string, major: string): Promise<{ steps: RoadmapStep[] }> {
+    return this.request('/api/narrative/roadmap', {
+      method: 'POST',
+      body: JSON.stringify({ university, major }),
+    });
   }
 
   // Essay Generation and Management

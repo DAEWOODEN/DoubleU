@@ -97,9 +97,9 @@ DATA_DIR = _init_data_dir()
 if not settings.DATABASE_URL:
     if os.getenv("VERCEL"):
         # Vercel Serverless: use /tmp (only writable directory)
-        db_path = "/tmp/comchatx.db"
+        db_path = "/tmp/comchatx_v2.db"
     else:
         # Local development: use current directory
-        db_path = str(Path(__file__).parent / "comchatx.db")
+        db_path = str(Path(__file__).parent / "comchatx_v2.db")
     settings.DATABASE_URL = f"sqlite+aiosqlite:///{db_path}"
 

@@ -232,6 +232,10 @@ class MultiAgentSystem:
                 if profile_data.get('targetMajor') and profile_data.get('targetMajor', '').strip():
                     major = profile_data.get('targetMajor', '').strip()
                     profile_parts.append(f"interested in {major}")
+                if profile_data.get('idol') and profile_data.get('idol', '').strip():
+                    profile_parts.append(f"inspired by {profile_data.get('idol', '').strip()}")
+                if profile_data.get('currentStatus') and profile_data.get('currentStatus', '').strip():
+                    profile_parts.append(f"is a {profile_data.get('currentStatus', '').strip()}")
                 if profile_data.get('skill') and profile_data.get('skill', '').strip():
                     skill = profile_data.get('skill', '').strip()
                     profile_parts.append(f"excel at {skill}")

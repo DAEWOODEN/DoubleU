@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
 
 interface ProfileData {
   targetUniversities: string;
@@ -10,6 +9,9 @@ interface ProfileData {
   mbti: string;
   skill: string;
   hobby: string;
+  idol: string;
+  currentStatus: string;
+  budget: string;
 }
 
 interface ProfileSetupProps {
@@ -21,12 +23,15 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const [profile, setProfile] = useState<ProfileData>({
     targetUniversities: "",
     targetMajor: "",
-    name: "",
-    mbti: "",
+    name: "Student", // Default value as we don't ask for it anymore
+    mbti: "", // Default value
     skill: "",
     hobby: "",
+    idol: "",
+    currentStatus: "",
+    budget: "",
   });
-  // Add local input value state to ensure clean input for each question
+  
   const [currentInputValue, setCurrentInputValue] = useState("");
 
   const questions = [
@@ -43,16 +48,23 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
       type: "input" as const,
     },
     {
-      id: "name",
-      label: "Name",
-      placeholder: "",
+      id: "idol",
+      label: "Your Idol",
+      placeholder: "Who inspires you?",
       type: "input" as const,
     },
     {
-      id: "mbti",
-      label: "MBTI",
+      id: "currentStatus",
+      label: "Your Current Status",
       placeholder: "",
-      type: "input" as const,
+      type: "select" as const,
+      options: [
+        "High school student",
+        "Undergraduate student",
+        "Undergraduate graduate",
+        "Graduate student",
+        "On job / Gap"
+      ]
     },
     {
       id: "skill",
@@ -66,6 +78,12 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
       placeholder: "One thing you love most",
       type: "input" as const,
     },
+    {
+      id: "budget",
+      label: "Your Budget",
+      placeholder: "Maximum amount to be spent",
+      type: "input" as const,
+    },
   ];
 
   const currentQuestion = questions[step];
@@ -73,31 +91,28 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
 
   // Reset input value when step changes
   useEffect(() => {
-    // Get the saved value for current question, or start with empty
     const savedValue = profile[currentQuestion.id as keyof ProfileData];
     setCurrentInputValue(savedValue || "");
   }, [step, currentQuestion.id]);
 
   const handleNext = () => {
-    // Save current input value to profile before moving to next step
     if (currentInputValue.trim().length > 0) {
-      setProfile({
+      const updatedProfile = {
         ...profile,
         [currentQuestion.id]: currentInputValue.trim(),
-      });
-    }
-    
-    if (step < questions.length - 1) {
-      setStep(step + 1);
-      // Clear input for next question - useEffect will handle this
-    } else {
-      console.log("Completing profile setup with:", profile);
-      onComplete(profile);
+      };
+      setProfile(updatedProfile);
+      
+      if (step < questions.length - 1) {
+        setStep(step + 1);
+      } else {
+        console.log("Completing profile setup with:", updatedProfile);
+        onComplete(updatedProfile);
+      }
     }
   };
 
   const handleBack = () => {
-    // Save current input value before going back
     if (currentInputValue.trim().length > 0) {
       setProfile({
         ...profile,
@@ -112,7 +127,6 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
 
   const updateProfile = (value: string) => {
     setCurrentInputValue(value);
-    // Also update profile in real-time
     setProfile({
       ...profile,
       [currentQuestion.id]: value,
@@ -122,14 +136,14 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const canProceed = currentInputValue.trim().length > 0;
 
   return (
-    <div className="h-full flex items-center justify-center bg-background p-16">
+    <div className="h-full flex items-center justify-center bg-background p-4 sm:p-16">
       <div className="w-full max-w-2xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="mb-16">
+          <div className="mb-12 sm:mb-16">
             <div className="h-px bg-border mb-4">
               <motion.div
                 className="h-full bg-foreground"
@@ -150,21 +164,44 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h2 className="text-3xl mb-12">{currentQuestion.label}</h2>
+            <h2 className="text-3xl sm:text-4xl mb-8 sm:mb-12">{currentQuestion.label}</h2>
 
-            <Input
-              key={currentQuestion.id}
-              value={currentInputValue}
-              onChange={(e) => updateProfile(e.target.value)}
-              placeholder={currentQuestion.placeholder}
-              className="text-lg py-6 border-border focus:border-foreground bg-transparent"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && canProceed) {
-                  handleNext();
-                }
-              }}
-            />
+            {currentQuestion.type === "select" ? (
+              <div className="grid gap-3">
+                {currentQuestion.options?.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => {
+                      updateProfile(option);
+                      // Optional: Auto-advance on selection
+                      // setTimeout(handleNext, 200); 
+                    }}
+                    className={`text-left px-6 py-4 border transition-all duration-300 text-lg
+                      ${currentInputValue === option 
+                        ? "border-foreground bg-foreground text-background" 
+                        : "border-border hover:border-foreground/50 text-muted hover:text-foreground"
+                      }
+                    `}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Input
+                key={currentQuestion.id}
+                value={currentInputValue}
+                onChange={(e) => updateProfile(e.target.value)}
+                placeholder={currentQuestion.placeholder}
+                className="text-lg py-6 border-border focus:border-foreground bg-transparent"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canProceed) {
+                    handleNext();
+                  }
+                }}
+              />
+            )}
           </motion.div>
 
           <div className="flex justify-between items-center mt-16">

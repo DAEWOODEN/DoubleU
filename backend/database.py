@@ -40,6 +40,9 @@ class UserProfile(Base):
     mbti = Column(String)
     skill = Column(String)
     hobby = Column(String)
+    idol = Column(String)  # New field
+    current_status = Column(String)  # New field
+    budget = Column(String)  # New field
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

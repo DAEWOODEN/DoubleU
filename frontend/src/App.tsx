@@ -19,6 +19,9 @@ interface ProfileData {
   mbti: string;
   skill: string;
   hobby: string;
+  idol: string;
+  currentStatus: string;
+  budget: string;
 }
 
 export default function App() {
@@ -251,7 +254,7 @@ export default function App() {
                     const profile = localStorage.getItem("userProfile");
                     if (profile) {
                       const data = JSON.parse(profile);
-                      const info = `Name: ${data.name}\nUniversities: ${data.targetUniversities}\nMajor: ${data.targetMajor}\nMBTI: ${data.mbti}\nSkill: ${data.skill}\nHobby: ${data.hobby}`;
+                      const info = `Name: ${data.name}\nUniversities: ${data.targetUniversities}\nMajor: ${data.targetMajor}\nStatus: ${data.currentStatus}\nIdol: ${data.idol}\nSkill: ${data.skill}\nHobby: ${data.hobby}\nBudget: ${data.budget}`;
                       alert(info);
                     }
                   }}
