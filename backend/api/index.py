@@ -1,59 +1,114 @@
 """
-Vercel Serverless Function Entry Point
-This file is required for Vercel to deploy FastAPI as serverless functions
+Vercel Serverless Function Entry Point for FastAPI
+Uses HTTP handler class pattern that Vercel expects
 """
+from http.server import BaseHTTPRequestHandler
 import os
 import sys
+import json
+import asyncio
 from pathlib import Path
+from io import BytesIO
+from urllib.parse import urlparse, parse_qs
 
-# Get the backend directory (parent of api directory)
-backend_dir = Path(__file__).parent.parent.absolute()
+# Setup path before any imports
+_backend_dir = Path(__file__).parent.parent.absolute()
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
+os.chdir(str(_backend_dir))
 
-# Add backend directory to Python path
-if str(backend_dir) not in sys.path:
-    sys.path.insert(0, str(backend_dir))
+# Import FastAPI app
+from main import app as fastapi_app
 
-# Change working directory to backend for relative imports
-os.chdir(str(backend_dir))
 
-# Now import main app
-try:
-    from mangum import Mangum
-    from main import app
+class handler(BaseHTTPRequestHandler):
+    """
+    HTTP Handler that proxies requests to FastAPI app
+    Vercel expects a class named 'handler' that inherits from BaseHTTPRequestHandler
+    """
     
-    # Create Mangum ASGI handler
-    mangum_handler = Mangum(app, lifespan="off")
+    def _run_async(self, coro):
+        """Run async code in sync context"""
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
     
-    # Vercel expects a function, not a class instance
-    # Wrap Mangum handler in a function to avoid type checking issues
-    def handler(event, context):
-        """Vercel serverless function handler wrapper"""
-        return mangum_handler(event, context)
+    async def _call_fastapi(self, method: str, body: bytes = b""):
+        """Call FastAPI app with ASGI interface"""
+        from starlette.testclient import TestClient
         
-except ImportError as e:
-    # Better error handling for import issues
-    import traceback
-    error_msg = f"Import error: {str(e)}\n{traceback.format_exc()}"
-    print(error_msg, file=sys.stderr)
-    
-    # Create a minimal error handler
-    from mangum import Mangum
-    from fastapi import FastAPI
-    
-    error_app = FastAPI()
-    @error_app.get("/{path:path}")
-    async def error_handler():
-        return {"error": "Import failed", "detail": str(e)}
-    
-    error_mangum = Mangum(error_app, lifespan="off")
-    
-    def handler(event, context):
-        """Error handler wrapper"""
-        return error_mangum(event, context)
+        # Use Starlette TestClient to make request to FastAPI
+        with TestClient(fastapi_app, raise_server_exceptions=False) as client:
+            headers = dict(self.headers)
+            url = self.path
+            
+            if method == "GET":
+                response = client.get(url, headers=headers)
+            elif method == "POST":
+                content_type = headers.get("Content-Type", "application/json")
+                response = client.post(url, content=body, headers=headers)
+            elif method == "PUT":
+                response = client.put(url, content=body, headers=headers)
+            elif method == "DELETE":
+                response = client.delete(url, headers=headers)
+            elif method == "OPTIONS":
+                response = client.options(url, headers=headers)
+            elif method == "PATCH":
+                response = client.patch(url, content=body, headers=headers)
+            else:
+                response = client.get(url, headers=headers)
         
-except Exception as e:
-    import traceback
-    error_msg = f"Setup error: {str(e)}\n{traceback.format_exc()}"
-    print(error_msg, file=sys.stderr)
-    raise
+        return response
+    
+    def _handle_request(self, method: str):
+        """Handle HTTP request"""
+        try:
+            # Read body for POST/PUT/PATCH
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length) if content_length > 0 else b""
+            
+            # Call FastAPI
+            response = self._run_async(self._call_fastapi(method, body))
+            
+            # Send response
+            self.send_response(response.status_code)
+            
+            # Send headers
+            for key, value in response.headers.items():
+                if key.lower() not in ("content-encoding", "transfer-encoding"):
+                    self.send_header(key, value)
+            self.end_headers()
+            
+            # Send body
+            self.wfile.write(response.content)
+            
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
+    
+    def do_GET(self):
+        self._handle_request("GET")
+    
+    def do_POST(self):
+        self._handle_request("POST")
+    
+    def do_PUT(self):
+        self._handle_request("PUT")
+    
+    def do_DELETE(self):
+        self._handle_request("DELETE")
+    
+    def do_OPTIONS(self):
+        self._handle_request("OPTIONS")
+    
+    def do_PATCH(self):
+        self._handle_request("PATCH")
+    
+    def do_HEAD(self):
+        self._handle_request("HEAD")
 
