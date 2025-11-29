@@ -234,9 +234,9 @@ export function TimelineView() {
                     <span className="text-xs font-medium uppercase tracking-wider text-muted-light">
                       {event.date}
                     </span>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEditDialog(event)} className="hover:text-foreground text-muted">✎</button>
-                      <button onClick={() => handleDelete(event.id)} className="hover:text-red-400 text-muted">×</button>
+                    <div className="flex gap-2">
+                      <button onClick={() => openEditDialog(event)} className="hover:text-foreground text-muted/50 hover:text-muted transition-colors" title="Edit">✎</button>
+                      <button onClick={() => handleDelete(event.id)} className="hover:text-red-400 text-muted/50 hover:text-muted transition-colors text-lg leading-none" title="Delete">×</button>
                     </div>
                   </div>
                   

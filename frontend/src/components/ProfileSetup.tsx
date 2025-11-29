@@ -61,8 +61,7 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
       options: [
         "High school student",
         "Undergraduate student",
-        "Undergraduate graduate",
-        "Graduate student",
+        "Postgraduate student",
         "On job / Gap"
       ]
     },
