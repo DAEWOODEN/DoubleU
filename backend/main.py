@@ -54,10 +54,12 @@ app = FastAPI(
     description="Multi-Agent System for Personal Statement Generation",
     version="1.0.0",
     lifespan=lifespan,
-    # Set docs URLs to work with /api prefix
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
+    # Set docs URLs
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    # Set root_path for Vercel rewrites
+    root_path="/api" if os.getenv("VERCEL") else "",
 )
 
 
