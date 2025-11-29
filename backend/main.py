@@ -54,6 +54,10 @@ app = FastAPI(
     description="Multi-Agent System for Personal Statement Generation",
     version="1.0.0",
     lifespan=lifespan,
+    # Set docs URLs to work with /api prefix
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 

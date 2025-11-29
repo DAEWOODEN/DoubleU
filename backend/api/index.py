@@ -6,10 +6,7 @@ from http.server import BaseHTTPRequestHandler
 import os
 import sys
 import json
-import asyncio
 from pathlib import Path
-from io import BytesIO
-from urllib.parse import urlparse, parse_qs
 
 # Setup path before any imports
 _backend_dir = Path(__file__).parent.parent.absolute()
@@ -17,8 +14,12 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 os.chdir(str(_backend_dir))
 
-# Import FastAPI app
+# Import FastAPI app and create TestClient
 from main import app as fastapi_app
+from starlette.testclient import TestClient
+
+# Create a single TestClient instance
+_test_client = TestClient(fastapi_app, raise_server_exceptions=False)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -27,41 +28,34 @@ class handler(BaseHTTPRequestHandler):
     Vercel expects a class named 'handler' that inherits from BaseHTTPRequestHandler
     """
     
-    def _run_async(self, coro):
-        """Run async code in sync context"""
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop.run_until_complete(coro)
-    
-    async def _call_fastapi(self, method: str, body: bytes = b""):
-        """Call FastAPI app with ASGI interface"""
-        from starlette.testclient import TestClient
+    def _call_fastapi(self, method: str, body: bytes = b""):
+        """Call FastAPI app using TestClient"""
+        # Build headers dict (filter out problematic headers)
+        headers = {}
+        for key, value in self.headers.items():
+            key_lower = key.lower()
+            if key_lower not in ('host', 'content-length'):
+                headers[key] = value
         
-        # Use Starlette TestClient to make request to FastAPI
-        with TestClient(fastapi_app, raise_server_exceptions=False) as client:
-            headers = dict(self.headers)
-            url = self.path
-            
-            if method == "GET":
-                response = client.get(url, headers=headers)
-            elif method == "POST":
-                content_type = headers.get("Content-Type", "application/json")
-                response = client.post(url, content=body, headers=headers)
-            elif method == "PUT":
-                response = client.put(url, content=body, headers=headers)
-            elif method == "DELETE":
-                response = client.delete(url, headers=headers)
-            elif method == "OPTIONS":
-                response = client.options(url, headers=headers)
-            elif method == "PATCH":
-                response = client.patch(url, content=body, headers=headers)
-            else:
-                response = client.get(url, headers=headers)
+        url = self.path
         
-        return response
+        # Make request based on method
+        if method == "GET":
+            return _test_client.get(url, headers=headers)
+        elif method == "POST":
+            return _test_client.post(url, content=body, headers=headers)
+        elif method == "PUT":
+            return _test_client.put(url, content=body, headers=headers)
+        elif method == "DELETE":
+            return _test_client.delete(url, headers=headers)
+        elif method == "OPTIONS":
+            return _test_client.options(url, headers=headers)
+        elif method == "PATCH":
+            return _test_client.patch(url, content=body, headers=headers)
+        elif method == "HEAD":
+            return _test_client.head(url, headers=headers)
+        else:
+            return _test_client.get(url, headers=headers)
     
     def _handle_request(self, method: str):
         """Handle HTTP request"""
@@ -71,14 +65,15 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length) if content_length > 0 else b""
             
             # Call FastAPI
-            response = self._run_async(self._call_fastapi(method, body))
+            response = self._call_fastapi(method, body)
             
             # Send response
             self.send_response(response.status_code)
             
-            # Send headers
+            # Send headers (skip problematic ones)
+            skip_headers = {'content-encoding', 'transfer-encoding', 'connection'}
             for key, value in response.headers.items():
-                if key.lower() not in ("content-encoding", "transfer-encoding"):
+                if key.lower() not in skip_headers:
                     self.send_header(key, value)
             self.end_headers()
             
@@ -86,10 +81,15 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(response.content)
             
         except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+            self.wfile.write(json.dumps({
+                "error": str(e),
+                "detail": error_detail
+            }).encode())
     
     def do_GET(self):
         self._handle_request("GET")
