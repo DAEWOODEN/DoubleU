@@ -6,6 +6,7 @@ Centralized configuration management using Pydantic Settings
 from pydantic_settings import BaseSettings
 from typing import List
 import os
+import errno
 from pathlib import Path
 
 
@@ -18,7 +19,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     
     # Database
-    # Use /tmp for Vercel Serverless (only writable directory)
+    # DATABASE_URL 可以通过环境变量覆盖；未设置时根据运行环境自动生成
     DATABASE_URL: str = ""
     
     # AI API Keys
@@ -56,6 +57,39 @@ class Settings(BaseSettings):
 # Global settings instance
 settings = Settings()
 
+
+def _init_data_dir() -> Path:
+    """
+    初始化数据目录：
+    - 本地开发：使用 backend/data
+    - Vercel Serverless：使用 /tmp/comchatx_data（/var/task 为只读）
+    """
+    # 允许通过环境变量自定义
+    base_dir = os.getenv("DATA_DIR_PATH")
+    if base_dir:
+        data_dir = Path(base_dir)
+    else:
+        if os.getenv("VERCEL"):
+            data_dir = Path("/tmp/comchatx_data")
+        else:
+            data_dir = Path(__file__).parent / "data"
+
+    try:
+        data_dir.mkdir(exist_ok=True, parents=True)
+    except OSError as e:
+        # 只读文件系统或无权限则退回 /tmp
+        if e.errno in (errno.EROFS, errno.EACCES):
+            data_dir = Path("/tmp/comchatx_data")
+            data_dir.mkdir(exist_ok=True, parents=True)
+        else:
+            raise
+
+    return data_dir
+
+
+# Ensure data directory exists
+DATA_DIR = _init_data_dir()
+
 # Set DATABASE_URL after settings initialization
 if not settings.DATABASE_URL:
     if os.getenv("VERCEL"):
@@ -65,9 +99,4 @@ if not settings.DATABASE_URL:
         # Local development: use current directory
         db_path = str(Path(__file__).parent / "comchatx.db")
     settings.DATABASE_URL = f"sqlite+aiosqlite:///{db_path}"
-
-
-# Ensure data directory exists
-DATA_DIR = Path(__file__).parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
 
