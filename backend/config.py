@@ -69,7 +69,10 @@ def _init_data_dir() -> Path:
     if base_dir:
         data_dir = Path(base_dir)
     else:
-        if os.getenv("VERCEL"):
+        # 在 Vercel Serverless 环境下，代码被打包到 /var/task，且该路径只读
+        # 这里通过检测 __file__ 路径是否位于 /var/task 来判断
+        running_in_vercel = os.getenv("VERCEL") or str(Path(__file__).parent).startswith("/var/task")
+        if running_in_vercel:
             data_dir = Path("/tmp/comchatx_data")
         else:
             data_dir = Path(__file__).parent / "data"
