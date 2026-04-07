@@ -46,116 +46,6 @@ AI Service Layer
   └─ MiniMax-M2 (辅助分析)
 ```
 
-### 核心技术栈
-
-前端技术：
-- React 18.3 + TypeScript 5.0+
-- Vite (构建工具)
-- Motion (动画库)
-- Radix UI (组件库)
-- TailwindCSS (样式框架)
-
-后端技术：
-- FastAPI (Web 框架)
-- SQLAlchemy (ORM)
-- DeepSeek API (主 LLM)
-- MiniMax API (辅助 LLM)
-
-## 快速开始
-
-### 前置要求
-
-- Node.js 16+ (推荐 18+)
-- Python 3.10+
-- npm/yarn/pnpm 包管理器
-
-### 安装步骤
-
-#### 1. 克隆项目
-
-```bash
-git clone <repository-url>
-cd ComChatX
-```
-
-#### 2. 启动后端
-
-```bash
-cd backend
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 启动服务器 (已配置 API 密钥)
-python main.py
-
-# 或使用启动脚本
-# macOS/Linux:
-chmod +x start.sh
-./start.sh
-```
-
-后端将在 `http://localhost:8000` 启动。
-
-API 文档地址: http://localhost:8000/docs
-
-#### 3. 启动前端
-
-```bash
-cd frontend
-
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-```
-
-前端将在 `http://localhost:5173` 启动。
-
-#### 4. 访问应用
-
-打开浏览器访问: http://localhost:5173
-
-## 项目结构
-
-```
-ComChatX/
-├── frontend/                  # React 前端
-│   ├── src/
-│   │   ├── components/       # UI 组件
-│   │   │   ├── IdeaBubbles.tsx      # 想法球交互
-│   │   │   ├── ChatSidebar.tsx      # AI 对话
-│   │   │   ├── TimelineView.tsx     # 叙事时间线
-│   │   │   ├── DocumentWorkspace.tsx # 文书编辑
-│   │   │   └── ui/                  # 基础组件
-│   │   ├── services/
-│   │   │   └── api.ts               # API 客户端
-│   │   └── App.tsx                  # 主应用
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── backend/                   # FastAPI 后端
-│   ├── agents/               # Multi-Agent 系统
-│   │   ├── agent_system.py  # Agent 编排核心
-│   │   └── prompts.py       # Agent 提示词
-│   ├── api/                  # API 路由
-│   │   ├── chat.py          # 对话 API
-│   │   ├── essay.py         # 文书 API
-│   │   ├── ideas.py         # 想法 API
-│   │   ├── narrative.py     # 叙事 API
-│   │   ├── profile.py       # 用户 API
-│   │   └── insights.py      # 洞察 API
-│   ├── database.py           # 数据库模型
-│   ├── llm_clients.py        # LLM 客户端
-│   ├── config.py             # 配置管理
-│   ├── main.py               # 应用入口
-│   └── requirements.txt      # Python 依赖
-│
-├── 快速部署.sh               # 一键部署脚本
-└── README.md                 # 项目说明
-```
-
 ## Multi-Agent 系统详解
 
 ### Agent 角色与职责
@@ -227,96 +117,7 @@ Ideas (10个想法) → Narrator (构建框架) → Writer (撰写草稿) → Au
 
 ## API 密钥配置
 
-已预配置密钥，开箱即用。
-
 如需更换密钥，请编辑 `backend/.env` 文件：
-
-```env
-DEEPSEEK_API_KEY=sk-5875a42e4df34ec894a2e63e4fc1f212
-MINIMAX_API_KEY=<完整 JWT Token>
-```
-
-## 数据流向
-
-```
-用户输入
-  ↓
-前端 IdeaBubbles/Chat
-  ↓
-POST /api/chat/stream (SSE)
-  ↓
-Global Agent → SubAgents
-  ↓
-DeepSeek/MiniMax API
-  ↓
-流式返回 → 前端渲染
-  ↓
-数据库持久化 (开发模式使用 sessionStorage)
-```
-
-## 开发指南
-
-### 添加新组件
-
-1. 在 `frontend/src/components/` 创建组件
-2. 使用 Radix UI + TailwindCSS
-3. 集成 Motion 动画
-
-### 添加新 API
-
-1. 在 `backend/api/` 创建路由文件
-2. 定义 Pydantic Schema
-3. 在 `api/__init__.py` 注册路由
-
-### 调整 Agent 行为
-
-编辑 `backend/agents/prompts.py` 中的 Agent 提示词
-
-### 自定义样式
-
-编辑 `frontend/src/index.css` 或组件内联样式
-
-## 测试
-
-### 后端测试
-
-```bash
-cd backend
-pytest
-```
-
-### 前端测试
-
-```bash
-cd frontend
-npm run test
-```
-
-## 部署
-
-### 本地部署
-
-使用提供的 `快速部署.sh` 脚本进行一键部署。
-
-详细部署说明请参考 `使用说明.md` 文件。
-
-### 生产部署
-
-#### 后端部署
-
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-```
-
-#### 前端部署
-
-```bash
-cd frontend
-npm run build
-# dist/ 目录可部署到 Vercel/Netlify/Nginx
-```
 
 ## 产品特色
 
@@ -346,37 +147,7 @@ npm run build
 - 当信息不足时，通过深度反思和分析扩展内容，而非虚构经历
 - 强调思考深度而非事件数量
 
-## 开发日志
 
-### 已完成功能
-
-- 完整的 Multi-Agent 系统架构
-- DeepSeek + MiniMax 双 LLM 集成
-- FastAPI 异步 API 框架
-- React + TypeScript 前端
-- 流式响应 (SSE)
-- 数据库持久化 (开发模式)
-- 想法球交互
-- 对话系统
-- 文书生成
-
-### 待优化项目
-
-- Agent 提示词精调
-- 更复杂的叙事分析
-- 动态专业 Agent 实现
-- 缓存和性能优化
-- 单元测试覆盖
-
-## 贡献指南
-
-欢迎提交 Issue 和 Pull Request。
-
-### 开发规范
-
-- Python: PEP 8
-- TypeScript: ESLint + Prettier
-- Commit: Conventional Commits
 
 ## 许可证
 
@@ -388,7 +159,7 @@ Bruuce
 
 ## 联系方式
 
-- Email: (待添加)
+- Email: bruuce520@gmail.com
 - Issue: GitHub Issues
 
 ---
