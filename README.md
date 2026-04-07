@@ -45,6 +45,7 @@ ComChatX 通过 Multi-Agent AI 系统帮助学生完成以下目标：
 AI Service Layer
   ├─ DeepSeek-V3 (主力对话和写作)
   └─ MiniMax-M2 (辅助分析)
+  └─ ...
 ```
 
 ## Multi-Agent 系统详解
