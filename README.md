@@ -1,6 +1,6 @@
-# ComChatX - 智能留学文书创作平台
+# ComChatX - 智能留学文书创作平台 - 从叙事挖掘到自我呈现
 
-基于 Multi-Agent 架构的 AI 驱动个人陈述生成系统。
+基于 Multi-Agent 架构的 AI 驱动个人陈述生成系统
 
 ## 项目简介
 
