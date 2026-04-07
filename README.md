@@ -164,5 +164,3 @@ Bruuce
 - Issue: GitHub Issues
 
 ---
-
-用 AI 赋能教育，让每个学生都能讲述自己的故事。
