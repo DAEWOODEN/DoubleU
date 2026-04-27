@@ -63,8 +63,8 @@ cp .env.example .env
 ```
 
 **重要**: API 密钥已预配置在 `.env` 文件中:
-- DeepSeek API Key: `sk-5875a42e4df34ec894a2e63e4fc1f212`
-- MiniMax API Key: (已配置完整 JWT Token)
+- DeepSeek API Key: 
+- MiniMax API Key: 
 
 ### 4. 启动服务器
 
@@ -76,12 +76,11 @@ python main.py
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-服务器将在 `http://localhost:8000` 启动
+
 
 ### 5. 访问 API 文档
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+
 
 ## 📁 项目结构
 
